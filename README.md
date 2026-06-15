@@ -20,7 +20,9 @@ under fully autonomous AI.
   the next battle and new units. Progress is saved automatically.
 - **Sandbox** — unlimited budget; place either team anywhere and experiment.
 - **Deployment phase** — spend gold to position your army on your half of the
-  field, then hit *Start Battle*.
+  field, then hit *Start Battle*. A live **placement preview** ghost follows
+  your cursor, glowing green where you can drop the selected unit and red where
+  you can't.
 - **RTS camera** — WASD/arrows pan, Q/E rotate, mouse wheel zoom.
 
 ## Controls

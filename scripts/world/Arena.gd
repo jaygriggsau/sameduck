@@ -23,6 +23,12 @@ var _camera: RTSCamera
 var _battle_running: bool = false
 var _count_timer: float = 0.0
 
+var _preview: Node3D
+var _preview_ring: MeshInstance3D
+var _preview_body: MeshInstance3D
+var _preview_mat_ring: StandardMaterial3D
+var _preview_mat_body: StandardMaterial3D
+
 func _ready() -> void:
 	add_to_group("arena")
 	_build_environment()
@@ -33,6 +39,7 @@ func _ready() -> void:
 	_projectiles_root = Node3D.new()
 	_projectiles_root.name = "Projectiles"
 	add_child(_projectiles_root)
+	_build_preview()
 
 # --- Setup entry points ---------------------------------------------------
 func setup_campaign(level: Dictionary) -> void:
@@ -150,6 +157,7 @@ func _build_camera() -> void:
 # --- Placement ------------------------------------------------------------
 func set_selected_unit(id: String) -> void:
 	selected_unit_id = id
+	_update_preview_shape()
 
 func set_sandbox_team(team: int) -> void:
 	sandbox_team = team
@@ -185,28 +193,98 @@ func _in_player_zone(p: Vector3) -> bool:
 func _in_enemy_zone(p: Vector3) -> bool:
 	return p.z < -MARGIN and p.z > -FIELD_Z * 0.5 + 1.0 and absf(p.x) < FIELD_X * 0.5 - 1.0
 
-func _try_deploy(point: Vector3) -> void:
+## Validity check shared by deployment and the placement preview: is the
+## currently selected unit allowed to be dropped at `point` right now?
+func _can_place_at(point: Vector3) -> bool:
 	if selected_unit_id == "" or not UnitDatabase.has_unit(selected_unit_id):
-		return
-	var team: int
+		return false
 	if mode == GameManager.Mode.SANDBOX:
-		team = sandbox_team
-		# In sandbox, place within the chosen team's half.
-		if team == GameManager.Team.A and not _in_player_zone(point):
-			return
-		if team == GameManager.Team.B and not _in_enemy_zone(point):
-			return
-		_spawn_unit(selected_unit_id, team, point)
-	else:
-		if not _in_player_zone(point):
-			return
-		var cost: int = UnitDatabase.get_unit(selected_unit_id).get("cost", 0)
-		if cost > budget_remaining:
-			return
-		budget_remaining -= cost
+		if sandbox_team == GameManager.Team.A:
+			return _in_player_zone(point)
+		return _in_enemy_zone(point)
+	# Campaign: player's half, and affordable.
+	if not _in_player_zone(point):
+		return false
+	return int(UnitDatabase.get_unit(selected_unit_id).get("cost", 0)) <= budget_remaining
+
+func _try_deploy(point: Vector3) -> void:
+	if not _can_place_at(point):
+		return
+	var team := sandbox_team if mode == GameManager.Mode.SANDBOX else GameManager.Team.A
+	if mode == GameManager.Mode.CAMPAIGN:
+		budget_remaining -= int(UnitDatabase.get_unit(selected_unit_id).get("cost", 0))
 		budget_changed.emit(budget_remaining)
-		_spawn_unit(selected_unit_id, GameManager.Team.A, point)
+	_spawn_unit(selected_unit_id, team, point)
 	_emit_counts()
+
+# --- Placement preview ----------------------------------------------------
+func _build_preview() -> void:
+	_preview = Node3D.new()
+	_preview.name = "PlacementPreview"
+	add_child(_preview)
+
+	_preview_ring = MeshInstance3D.new()
+	var disc := CylinderMesh.new()
+	disc.height = 0.06
+	disc.top_radius = 0.55
+	disc.bottom_radius = 0.55
+	_preview_ring.mesh = disc
+	_preview_mat_ring = _preview_material()
+	_preview_ring.material_override = _preview_mat_ring
+	_preview_ring.position = Vector3(0, 0.04, 0)
+	_preview.add_child(_preview_ring)
+
+	_preview_body = MeshInstance3D.new()
+	var cap := CapsuleMesh.new()
+	cap.radius = 0.34
+	cap.height = 1.5
+	_preview_body.mesh = cap
+	_preview_mat_body = _preview_material()
+	_preview_body.material_override = _preview_mat_body
+	_preview_body.position = Vector3(0, 0.75, 0)
+	_preview.add_child(_preview_body)
+
+	_preview.visible = false
+
+func _preview_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(0.3, 1.0, 0.45, 0.4)
+	return m
+
+func _update_preview_shape() -> void:
+	if _preview_body == null or not UnitDatabase.has_unit(selected_unit_id):
+		return
+	var s: float = UnitDatabase.get_unit(selected_unit_id).get("scale", 1.0)
+	var r := 0.34 * s
+	var h := 1.5 * s
+	var cap := _preview_body.mesh as CapsuleMesh
+	cap.radius = r
+	cap.height = h
+	_preview_body.position = Vector3(0, h * 0.5 + 0.02, 0)
+	var disc := _preview_ring.mesh as CylinderMesh
+	disc.top_radius = r * 1.6
+	disc.bottom_radius = r * 1.6
+
+func _process(_delta: float) -> void:
+	if _preview == null:
+		return
+	var active := GameManager.state == GameManager.State.PLACEMENT \
+		and selected_unit_id != "" and UnitDatabase.has_unit(selected_unit_id)
+	if not active:
+		_preview.visible = false
+		return
+	var point = _ground_point(get_viewport().get_mouse_position())
+	if point == null:
+		_preview.visible = false
+		return
+	_preview.visible = true
+	_preview.global_position = Vector3(point.x, 0, point.z)
+	var ok := _can_place_at(point)
+	var tint := Color(0.3, 1.0, 0.45) if ok else Color(1.0, 0.32, 0.32)
+	_preview_mat_ring.albedo_color = Color(tint.r, tint.g, tint.b, 0.8)
+	_preview_mat_body.albedo_color = Color(tint.r, tint.g, tint.b, 0.45)
 
 func _try_remove(point: Vector3) -> void:
 	# Remove (and refund, in campaign) the nearest friendly unit to the click.

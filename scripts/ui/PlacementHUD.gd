@@ -27,6 +27,14 @@ func _ready() -> void:
 	if not ids.is_empty():
 		_select_unit(ids[0])
 
+func _unhandled_key_input(event: InputEvent) -> void:
+	if GameManager.state != GameManager.State.PLACEMENT:
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+			_on_start()
+			get_viewport().set_input_as_handled()
+
 func _available_unit_ids() -> Array:
 	var result: Array = []
 	for id in UnitDatabase.get_all_ids():
@@ -68,8 +76,8 @@ func _build_palette() -> void:
 	var panel := UI.panel()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	panel.offset_left = 10
-	panel.offset_top = 60
 	add_child(panel)
 
 	var col := VBoxContainer.new()
@@ -90,6 +98,8 @@ func _build_bottom_bar() -> void:
 	var panel := UI.panel()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	# A bottom-anchored auto-sized panel must grow UPWARD into view.
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.offset_left = 10
 	panel.offset_right = -10
 	panel.offset_bottom = -10
@@ -98,7 +108,7 @@ func _build_bottom_bar() -> void:
 	row.add_theme_constant_override("separation", 12)
 	panel.add_child(row)
 
-	var start := UI.button("⚔  START BATTLE", 240, 48)
+	var start := UI.primary_button("⚔  START BATTLE  (Enter)", 300, 54)
 	start.pressed.connect(_on_start)
 	row.add_child(start)
 
