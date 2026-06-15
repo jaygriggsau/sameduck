@@ -1,0 +1,12 @@
+# Godot 4+ engine cache / import data (regenerated on open)
+.godot/
+
+# Exported builds
+/build/
+*.exe
+*.pck
+*.zip
+
+# OS / editor cruft
+.DS_Store
+*~

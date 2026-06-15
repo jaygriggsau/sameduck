@@ -1,0 +1,34 @@
+; Engine configuration file.
+; Sameduck Battle Simulator — a TABS-like 3D ragdoll battle game.
+; Godot 4.6.3
+
+config_version=5
+
+[application]
+
+config/name="Sameduck Battle Simulator"
+config/description="A Totally-Accurate-Battle-Simulator-like game: deploy wobbly ragdoll armies and watch them brawl."
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+UnitDatabase="*res://scripts/data/UnitDatabase.gd"
+LevelDatabase="*res://scripts/data/LevelDatabase.gd"
+SaveManager="*res://scripts/data/SaveManager.gd"
+GameManager="*res://scripts/game/GameManager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[physics]
+
+3d/default_gravity=18.0
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
