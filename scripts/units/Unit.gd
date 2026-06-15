@@ -96,7 +96,16 @@ func _build_body() -> void:
 	shape.shape = caps
 	torso.add_child(shape)
 
-	# Body mesh
+	# Place the torso in the world (global transform requires being in-tree).
+	torso.global_position = global_position + Vector3(0, t_height * 0.5 + 0.02, 0)
+
+	var accent: Color = stats.get("accent", Color.WHITE)
+	var model_path: String = stats.get("model", "")
+	if model_path != "" and _attach_model(model_path, s, t_height, radius):
+		# A custom model replaces the capsule body, head, weapon and arms.
+		return
+
+	# --- Default procedural body ---
 	var body_mesh := MeshInstance3D.new()
 	var caps_mesh := CapsuleMesh.new()
 	caps_mesh.radius = radius
@@ -116,7 +125,6 @@ func _build_body() -> void:
 	torso.add_child(head)
 
 	# Weapon / accent nub on the front, so facing is readable.
-	var accent: Color = stats.get("accent", Color.WHITE)
 	var weapon := MeshInstance3D.new()
 	var weapon_mesh := BoxMesh.new()
 	weapon_mesh.size = Vector3(0.12, 0.12, 0.9) * s
@@ -125,12 +133,85 @@ func _build_body() -> void:
 	weapon.material_override = _make_material(accent)
 	torso.add_child(weapon)
 
-	# Place the torso in the world (global transform requires being in-tree).
-	torso.global_position = global_position + Vector3(0, t_height * 0.5 + 0.02, 0)
-
 	# Dangling arms as separate jointed rigid bodies.
 	_build_arm(-1.0, radius, t_height, s, mass, accent)
 	_build_arm(1.0, radius, t_height, s, mass, accent)
+
+## Instantiates a GLB/scene model, scales it to the desired height, grounds it
+## on the torso capsule and tints it slightly toward the team colour. Returns
+## false if the model could not be loaded (caller falls back to the capsule).
+func _attach_model(model_path: String, s: float, t_height: float, radius: float) -> bool:
+	if not ResourceLoader.exists(model_path):
+		push_warning("Unit: model not found: %s" % model_path)
+		return false
+	var scene := load(model_path) as PackedScene
+	if scene == null:
+		return false
+	var inst := scene.instantiate()
+	if inst == null:
+		return false
+	var holder := Node3D.new()
+	holder.name = "Model"
+	torso.add_child(holder)
+	holder.add_child(inst)
+
+	var aabb := _merged_local_aabb(inst)
+	var size := aabb.size
+	var src_h: float = max(size.y, 0.001)
+	var target_h: float = stats.get("model_height", 1.85 * s)
+	var k: float = target_h / src_h
+	inst.scale = Vector3(k, k, k)
+
+	# Centre horizontally and drop the feet onto the capsule bottom.
+	var center_x: float = (aabb.position.x + size.x * 0.5) * k
+	var center_z: float = (aabb.position.z + size.z * 0.5) * k
+	var bottom: float = aabb.position.y * k
+	inst.position = Vector3(-center_x, -t_height * 0.5 - bottom, -center_z)
+
+	# Face the enemy half by default (the model faces +Z natively, which is the
+	# player's side, so team A is spun around to look toward the enemy at -Z).
+	var yaw: float = stats.get("model_yaw_deg", 0.0)
+	if team == GameManager.Team.A:
+		yaw += 180.0
+	holder.rotation = Vector3(0, deg_to_rad(yaw), 0)
+
+	# Subtle team tint so blue/red sides stay readable.
+	_tint_model(inst, _team_color)
+	return true
+
+## Washes the model toward its team colour using a translucent material overlay,
+## which keeps the baked textures intact underneath.
+func _tint_model(node: Node, col: Color) -> void:
+	var overlay := StandardMaterial3D.new()
+	overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	overlay.albedo_color = Color(col.r, col.g, col.b, 0.28)
+	for vi in node.find_children("*", "MeshInstance3D", true, false):
+		(vi as MeshInstance3D).material_overlay = overlay
+
+## Merged AABB of every VisualInstance3D under `root`, expressed in `root`'s
+## local space (no global transforms needed; safe to call right after spawn).
+func _merged_local_aabb(root: Node3D) -> AABB:
+	var result := AABB()
+	var have := false
+	for vi in root.find_children("*", "VisualInstance3D", true, false):
+		var v := vi as VisualInstance3D
+		var rel := _relative_transform(root, v)
+		var t := rel * v.get_aabb()
+		if not have:
+			result = t
+			have = true
+		else:
+			result = result.merge(t)
+	return result
+
+func _relative_transform(root: Node3D, node: Node3D) -> Transform3D:
+	var xform := Transform3D.IDENTITY
+	var n: Node = node
+	while n != null and n != root:
+		if n is Node3D:
+			xform = (n as Node3D).transform * xform
+		n = n.get_parent()
+	return xform
 
 func _build_arm(side: float, radius: float, t_height: float, s: float, body_mass: float, accent: Color) -> void:
 	var arm := RigidBody3D.new()

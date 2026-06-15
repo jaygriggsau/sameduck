@@ -77,6 +77,11 @@ extend.
 
 - **Add a unit:** add an entry in `UnitDatabase._ready()`. Set `unlocked: true`
   to make it available from the start, or list its id as a level `reward`.
+- **Use a custom 3D model for a unit:** add a `"model"` key pointing at a
+  `.glb`/`.gltf` (e.g. the Archer uses the Meshy Guard Pikeman under
+  `assests/`). The model is auto-scaled to `"model_height"` metres, grounded on
+  the physics capsule, team-tinted and turned to face the enemy. Optional
+  `"model_yaw_deg"` corrects facing if your model's front isn't +Z.
 - **Add a level:** append a dictionary to `LevelDatabase._ready()`.
 - **Tune the ragdoll feel:** see `BALANCE_STIFFNESS`, `BALANCE_DAMPING` and
   `MOVE_FORCE` constants in `Unit.gd`.
