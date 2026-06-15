@@ -23,17 +23,22 @@ under fully autonomous AI.
   field, then hit *Start Battle*. A live **placement preview** ghost follows
   your cursor, glowing green where you can drop the selected unit and red where
   you can't.
-- **RTS camera** — WASD/arrows pan, Q/E rotate, mouse wheel zoom.
+- **Dual-mode camera** — during deployment it's an RTS rig (WASD/arrows pan,
+  Q/E rotate, wheel zoom); during battles it becomes a free-roam fly camera
+  (hold right-mouse to look, WASD to fly, E/Q up/down, Shift to boost).
 
 ## Controls
 
 | Action | Input |
 | --- | --- |
-| Deploy selected unit | Left-click on your (blue) half |
-| Remove a unit (refunds gold) | Right-click near it |
-| Pan camera | `W` `A` `S` `D` / arrow keys |
-| Rotate camera | `Q` / `E` |
-| Zoom | Mouse wheel (or `+` / `-`) |
+| Deploy selected unit (deployment) | Left-click on your (blue) half |
+| Remove a unit, refunds gold (deployment) | Right-click near it |
+| Pan camera (deployment) | `W` `A` `S` `D` / arrow keys |
+| Rotate camera (deployment) | `Q` / `E` |
+| Zoom (deployment) | Mouse wheel (or `+` / `-`) |
+| Look around (battle) | Hold right-mouse + move mouse |
+| Fly camera (battle) | `W` `A` `S` `D`, `E`/`Q` up/down, `Shift` boost |
+| Change fly speed (battle) | Mouse wheel |
 
 ## Running
 
