@@ -27,6 +27,24 @@ static func button(text: String, min_w: int = 220, min_h: int = 44) -> Button:
 	b.add_theme_font_size_override("font_size", 18)
 	return b
 
+## A bold, green call-to-action button (e.g. Start Battle).
+static func primary_button(text: String, min_w: int = 260, min_h: int = 54) -> Button:
+	var b := button(text, min_w, min_h)
+	b.add_theme_font_size_override("font_size", 22)
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color("#2e7d32")
+	normal.set_corner_radius_all(8)
+	normal.set_content_margin_all(10)
+	var hover := normal.duplicate()
+	hover.bg_color = Color("#43a047")
+	var pressed := normal.duplicate()
+	pressed.bg_color = Color("#1b5e20")
+	b.add_theme_stylebox_override("normal", normal)
+	b.add_theme_stylebox_override("hover", hover)
+	b.add_theme_stylebox_override("pressed", pressed)
+	b.add_theme_color_override("font_color", Color.WHITE)
+	return b
+
 static func panel(bg: Color = PANEL_BG) -> PanelContainer:
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
