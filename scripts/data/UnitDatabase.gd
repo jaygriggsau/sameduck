@@ -58,10 +58,6 @@ func _ready() -> void:
 		"knockback": 3.0, "is_ranged": true, "projectile_speed": 26.0,
 		"aoe_radius": 0.0, "scale": 0.95, "accent": Color("#aed581"),
 		"unlocked": true,
-		# Custom 3D model used instead of the default capsule body.
-		"model": "res://assests/Meshy_AI_Guard_Pikeman_0615101634_texture.glb",
-		"model_height": 1.9,    # desired on-field height in metres
-		"model_yaw_deg": 0.0,   # rotate the model about its vertical axis if needed
 		"description": "Fragile but deadly at range. Keep it behind a wall of melee.",
 	})
 	_register({
