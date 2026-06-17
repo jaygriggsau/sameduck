@@ -7,8 +7,8 @@ extends Node3D
 signal budget_changed(remaining: int)
 signal counts_changed(team_a: int, team_b: int)
 
-const FIELD_X := 44.0   # width
-const FIELD_Z := 30.0   # depth
+const FIELD_X := 132.0  # width
+const FIELD_Z := 90.0   # depth
 const MARGIN := 1.5     # neutral strip at the centre line
 
 var mode: int = GameManager.Mode.CAMPAIGN
@@ -151,7 +151,7 @@ func _add_wall(pos: Vector3, size: Vector3) -> void:
 
 func _build_camera() -> void:
 	_camera = RTSCamera.new()
-	_camera.focus = Vector3(0, 0, 2)
+	_camera.focus = Vector3(0, 0, 16)
 	add_child(_camera)
 
 # --- Placement ------------------------------------------------------------

@@ -15,21 +15,21 @@ extends Camera3D
 
 enum Mode { ORBIT, FLY }
 
-@export var pan_speed: float = 14.0
+@export var pan_speed: float = 34.0
 @export var rotate_speed: float = 1.6
-@export var zoom_speed: float = 2.5
+@export var zoom_speed: float = 4.0
 @export var min_zoom: float = 8.0
-@export var max_zoom: float = 34.0
+@export var max_zoom: float = 95.0
 
 @export var look_sensitivity: float = 0.0045
-@export var fly_speed: float = 16.0
+@export var fly_speed: float = 32.0
 @export var min_fly_speed: float = 4.0
-@export var max_fly_speed: float = 60.0
+@export var max_fly_speed: float = 110.0
 
 # ORBIT state
 var focus: Vector3 = Vector3.ZERO
 var _yaw: float = 0.0
-var _zoom: float = 20.0
+var _zoom: float = 48.0
 var _pitch_ratio: float = 0.62
 
 # FLY state
