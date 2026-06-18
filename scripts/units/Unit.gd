@@ -145,6 +145,63 @@ func _build_blob(s: float, radius: float, t_height: float, mass: float) -> void:
 	_build_arm(-1.0, radius, t_height, s, mass, skin)
 	_build_arm(1.0, radius, t_height, s, mass, skin)
 
+	# Per-type headgear & weapons give each unit a readable silhouette.
+	_add_accessories(s, head_y, head_r, body_col, skin, face)
+
+## Adds distinctive hats/helmets and carried weapons per unit type, attached to
+## the torso so they stay readable while the body wobbles.
+func _add_accessories(s: float, head_y: float, head_r: float, body_col: Color, skin: Color, face: float) -> void:
+	const STEEL := Color("#9aa3ad")
+	const WOOD := Color("#7a5630")
+	const IRON := Color("#2c2c33")
+	const HAT := Color("#caa45a")
+	var hx := 0.52 * s   # carried-weapon x offset (right side)
+	var top := head_y + head_r * 0.62
+
+	match stats.get("id", ""):
+		"peasant":
+			# Straw hat.
+			_acc(_cyl(head_r * 1.15, head_r * 1.15, 0.06 * s), Vector3(0, top, 0), HAT, 0.03 * s)
+			_acc(_cyl(head_r * 0.7, head_r * 0.7, 0.16 * s), Vector3(0, top + 0.09 * s, 0), HAT, 0.03 * s)
+		"spearman":
+			_acc(_cyl(head_r * 0.78, head_r * 0.86, 0.34 * s), Vector3(0, top + 0.05 * s, 0), Color("#6d5536"), 0.03 * s)
+			# Upright spear at the right side.
+			_acc(_cyl(0.05 * s, 0.05 * s, 1.5 * s), Vector3(hx, 0.45 * s, 0), WOOD, 0.025 * s)
+			_acc(_cone(0.11 * s, 0.26 * s), Vector3(hx, 1.3 * s, 0), STEEL, 0.02 * s)
+		"brawler":
+			# Red headband + bigger knuckles.
+			_acc(_cyl(head_r * 1.04, head_r * 1.04, 0.1 * s), Vector3(0, head_y + 0.06 * s, 0), Color("#c0392b"), 0.025 * s)
+			for a in _arms:
+				var k := _make_mesh_part(_sphere(0.19 * s), Vector3(0, -0.28 * s, 0), skin.darkened(0.1), 0.03 * s)
+				a.add_child(k)
+		"archer":
+			# Pointed hood + quiver on the back + a bow at the side.
+			_acc(_cone(head_r * 1.15, head_r * 1.7), Vector3(0, head_y + 0.16 * s, 0), Color("#3f6b3a"), 0.03 * s)
+			_acc(_cyl(0.11 * s, 0.11 * s, 0.62 * s), Vector3(0.16 * s, 0.2 * s, -face * 0.34 * s), WOOD, 0.025 * s, Vector3(deg_to_rad(18) * face, 0, 0))
+			_acc(_torus(0.34 * s, 0.05 * s), Vector3(-hx, 0.3 * s, 0), WOOD, 0.02 * s, Vector3(0, deg_to_rad(90), 0))
+		"knight":
+			# Steel helmet with a dark visor slit + an upright sword.
+			_acc(_sphere(head_r * 1.12), Vector3(0, head_y + head_r * 0.12, 0), STEEL, 0.03 * s)
+			_acc(_box(head_r * 1.6, 0.1 * s, head_r * 0.55), Vector3(0, head_y, face * head_r * 0.9), IRON, 0.0)
+			_acc(_box(0.06 * s, 0.95 * s, 0.16 * s), Vector3(hx, 0.55 * s, 0), STEEL, 0.025 * s)
+			_acc(_box(0.34 * s, 0.07 * s, 0.1 * s), Vector3(hx, 0.06 * s, 0), WOOD, 0.02 * s)
+		"bomber":
+			# Dark cap + a round bomb held at the side.
+			_acc(_cyl(head_r * 0.9, head_r * 0.9, 0.18 * s), Vector3(0, top, 0), IRON, 0.03 * s)
+			_acc(_sphere(0.24 * s), Vector3(hx, -0.05 * s, 0), IRON, 0.03 * s)
+			_acc(_cyl(0.025 * s, 0.025 * s, 0.14 * s), Vector3(hx, 0.18 * s, 0), HAT, 0.0)
+		"giant":
+			# Horns + a huge club.
+			_acc(_cone(0.12 * s, 0.42 * s), Vector3(-head_r * 0.6, head_y + head_r * 0.55, 0), Color("#efe6c8"), 0.025 * s, Vector3(0, 0, deg_to_rad(28)))
+			_acc(_cone(0.12 * s, 0.42 * s), Vector3(head_r * 0.6, head_y + head_r * 0.55, 0), Color("#efe6c8"), 0.025 * s, Vector3(0, 0, deg_to_rad(-28)))
+			_acc(_capsule(0.2 * s, 1.2 * s), Vector3(hx + 0.1 * s, 0.55 * s, 0), WOOD, 0.035 * s)
+
+## Attach a visual accessory mesh to the torso.
+func _acc(mesh: Mesh, pos: Vector3, color: Color, outline: float, rot: Vector3 = Vector3.ZERO) -> void:
+	var mi := _make_mesh_part(mesh, pos, color, outline)
+	mi.rotation = rot
+	torso.add_child(mi)
+
 func _make_mesh_part(mesh: Mesh, pos: Vector3, color: Color, outline: float) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
@@ -168,6 +225,27 @@ func _squashed_sphere(r: float) -> SphereMesh:
 	var m := SphereMesh.new()
 	m.radius = r
 	m.height = r * 1.2
+	return m
+
+func _box(x: float, y: float, z: float) -> BoxMesh:
+	var m := BoxMesh.new()
+	m.size = Vector3(x, y, z)
+	return m
+
+func _cyl(top: float, bottom: float, h: float) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = top
+	m.bottom_radius = bottom
+	m.height = h
+	return m
+
+func _cone(r: float, h: float) -> CylinderMesh:
+	return _cyl(0.0, r, h)
+
+func _torus(outer: float, tube: float) -> TorusMesh:
+	var m := TorusMesh.new()
+	m.outer_radius = outer
+	m.inner_radius = max(0.01, outer - tube * 2.0)
 	return m
 
 ## Instantiates a GLB/scene model, scales it to the desired height, grounds it

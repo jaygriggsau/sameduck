@@ -10,10 +10,16 @@ under fully autonomous AI.
 ## Features
 
 - **Borderlands-style art** — flat cel/toon shading with bold black ink
-  outlines (an inverted-hull `next_pass`), warm key light and a stylized sky.
+  outlines: per-part inverted-hull outlines *plus* a full-screen depth-edge
+  post-process (`edge_outline.gdshader`) that inks silhouettes, the seams
+  between body parts, and the gaps between clashing units. Warm key light and a
+  stylized sky round out the comic look.
 - **Gang-Beasts-style units** — chunky, soft, blobby humanoids (rounded torso,
   big head with eyes, stubby hands and feet) that flop around thanks to the
-  active-ragdoll physics.
+  active-ragdoll physics. Each unit type has a **distinct silhouette**: the
+  peasant's straw hat, the spearman's spear, the brawler's headband, the
+  archer's hood + bow, the knight's steel helmet + sword, the bomber's bomb,
+  and the giant's horns + club.
 - **3D active-ragdoll units** — each fighter is a self-balancing `RigidBody3D`
   (a PD controller keeps it upright, so it wobbles, staggers from knockbacks,
   and collapses into a limp ragdoll on death) with joint-connected dangling

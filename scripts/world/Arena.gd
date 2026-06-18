@@ -28,6 +28,7 @@ var _preview_ring: MeshInstance3D
 var _preview_body: MeshInstance3D
 var _preview_mat_ring: StandardMaterial3D
 var _preview_mat_body: StandardMaterial3D
+var _outline_mat: ShaderMaterial
 
 func _ready() -> void:
 	add_to_group("arena")
@@ -152,6 +153,23 @@ func _build_camera() -> void:
 	_camera = RTSCamera.new()
 	_camera.focus = Vector3(0, 0, 16)
 	add_child(_camera)
+	_add_outline_postprocess()
+
+## Full-screen edge-outline pass (ink lines on depth discontinuities), attached
+## to the camera so it overlays everything the camera renders.
+func _add_outline_postprocess() -> void:
+	var quad := MeshInstance3D.new()
+	quad.name = "EdgeOutline"
+	var qm := QuadMesh.new()
+	qm.size = Vector2(2, 2)
+	quad.mesh = qm
+	_outline_mat = ShaderMaterial.new()
+	_outline_mat.shader = load("res://scripts/shaders/edge_outline.gdshader")
+	quad.material_override = _outline_mat
+	quad.extra_cull_margin = 16384.0  # never frustum-cull the full-screen quad
+	quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	quad.position = Vector3(0, 0, -1)
+	_camera.add_child(quad)
 
 # --- Placement ------------------------------------------------------------
 func set_selected_unit(id: String) -> void:
