@@ -16,7 +16,9 @@ under fully autonomous AI.
   stylized sky round out the comic look.
 - **Gang-Beasts-style units** — chunky, soft, blobby humanoids (rounded torso,
   big head with eyes, stubby hands and feet) that flop around thanks to the
-  active-ragdoll physics. Each unit type has a **distinct silhouette**: the
+  active-ragdoll physics, including a gentle **idle wobble** while they stand
+  around (each unit sways on its own random rhythm). Each unit type has a
+  **distinct silhouette**: the
   peasant's straw hat, the spearman's spear, the brawler's headband, the
   archer's hood + bow, the knight's steel helmet + sword, the bomber's bomb,
   and the giant's horns + club.

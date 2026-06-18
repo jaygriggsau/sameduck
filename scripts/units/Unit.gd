@@ -44,6 +44,14 @@ var _arena: Node = null
 
 var _team_color: Color
 
+# Idle wobble: a gentle Gang-Beasts sway applied (via the balance target) while
+# the unit is alive but not actively walking toward a foe.
+const IDLE_SWAY := 0.13  # horizontal offset of the target up-vector (~7.4 deg)
+var _idle_phase: float = 0.0
+var _idle_freq: float = 1.3
+var _t: float = 0.0
+var _moving: bool = false
+
 # Configure must be called before the node enters the tree (before add_child).
 func configure(unit_id: String, unit_team: int, world_pos: Vector3, arena: Node) -> void:
 	stats = UnitDatabase.get_unit(unit_id)
@@ -62,6 +70,10 @@ func _ready() -> void:
 	_phys_mat.bounce = 0.0
 	_build_body()
 	_build_health_bar()
+	# Randomise the idle sway so a crowd of units never bobs in unison.
+	_idle_phase = randf() * TAU
+	_idle_freq = randf_range(1.0, 1.6)
+	_t = randf() * 10.0
 	set_physics_process(true)
 
 func _team_group() -> String:
@@ -386,6 +398,7 @@ func start_battle() -> void:
 func _physics_process(delta: float) -> void:
 	if torso == null:
 		return
+	_t += delta
 	_update_health_bar()
 
 	if not alive:
@@ -395,26 +408,37 @@ func _physics_process(delta: float) -> void:
 				queue_free()
 		return
 
-	# Keep the torso upright at all times (so units stand in the placement
-	# phase too); only seek/fight once the battle has started.
+	# Decide whether the unit is walking this frame (only during battle), then
+	# keep the torso upright — with an idle sway when it's just standing around.
+	if simulating:
+		_retarget_timer -= delta
+		if _retarget_timer <= 0.0 or not _is_target_valid():
+			_acquire_target()
+			_retarget_timer = 0.35
+		_attack_timer = max(0.0, _attack_timer - delta)
+		if _is_target_valid():
+			_pursue_and_attack(delta)
+		else:
+			_moving = false
+	else:
+		_moving = false
+
 	_apply_balance(delta)
 
-	if not simulating:
-		return
-
-	_retarget_timer -= delta
-	if _retarget_timer <= 0.0 or not _is_target_valid():
-		_acquire_target()
-		_retarget_timer = 0.35
-
-	_attack_timer = max(0.0, _attack_timer - delta)
-	if _is_target_valid():
-		_pursue_and_attack(delta)
-
 func _apply_balance(_delta: float) -> void:
+	# Target straight up while walking; gently sway in a little circle when idle.
+	var target_up := Vector3.UP
+	if not _moving:
+		var w := _idle_freq
+		target_up = Vector3(
+			sin(_t * w + _idle_phase) * IDLE_SWAY,
+			1.0,
+			cos(_t * w * 0.8 + _idle_phase * 1.7) * IDLE_SWAY
+		).normalized()
+
 	var up := torso.global_transform.basis.y
-	var axis := up.cross(Vector3.UP)
-	var angle := up.angle_to(Vector3.UP)
+	var axis := up.cross(target_up)
+	var angle := up.angle_to(target_up)
 	var scale_k: float = torso.mass / 3.0
 	if axis.length() > 0.0001 and angle > 0.0001:
 		axis = axis.normalized()
@@ -446,7 +470,8 @@ func _pursue_and_attack(_delta: float) -> void:
 	var dist := to_target.length()
 	var atk_range: float = stats.get("attack_range", 1.8)
 
-	if dist > atk_range * 0.85:
+	_moving = dist > atk_range * 0.85
+	if _moving:
 		# Steer toward the target on the horizontal plane.
 		var dir := to_target.normalized() if dist > 0.001 else Vector3.ZERO
 		var hv := torso.linear_velocity
