@@ -73,8 +73,8 @@ func _enemy_group() -> String:
 # --- Construction ---------------------------------------------------------
 func _build_body() -> void:
 	var s: float = stats.get("scale", 1.0)
-	var radius := 0.34 * s
-	var t_height := 1.5 * s   # full capsule height incl. caps
+	var radius := 0.42 * s
+	var t_height := 1.1 * s   # full capsule height incl. caps (chunky blob body)
 	var mass: float = stats.get("mass", 3.0)
 
 	torso = RigidBody3D.new()
@@ -105,37 +105,70 @@ func _build_body() -> void:
 		# A custom model replaces the capsule body, head, weapon and arms.
 		return
 
-	# --- Default procedural body ---
-	var body_mesh := MeshInstance3D.new()
-	var caps_mesh := CapsuleMesh.new()
-	caps_mesh.radius = radius
-	caps_mesh.height = t_height
-	body_mesh.mesh = caps_mesh
-	body_mesh.material_override = _make_material(_team_color)
-	torso.add_child(body_mesh)
+	# --- Default body: a chunky, soft "Gang Beasts"-style blob ---
+	_build_blob(s, radius, t_height, mass)
 
-	# Head (visual only, sits on top of the torso)
-	var head := MeshInstance3D.new()
-	var head_mesh := SphereMesh.new()
-	head_mesh.radius = radius * 0.85
-	head_mesh.height = radius * 1.7
-	head.mesh = head_mesh
-	head.position = Vector3(0, t_height * 0.5 + radius * 0.5, 0)
-	head.material_override = _make_material(_team_color.lightened(0.15))
+## Builds the blobby humanoid: fat rounded torso, big head with eyes, stubby
+## visual legs/feet, and two floppy jointed arms. Everything uses toon+outline
+## materials for the Borderlands look.
+func _build_blob(s: float, radius: float, t_height: float, mass: float) -> void:
+	var skin := Color("#c98a5a")
+	var body_col := _team_color
+	# Which way the character looks (toward the enemy half).
+	var face: float = -1.0 if team == GameManager.Team.A else 1.0
+
+	# Torso: a fat capsule "bean".
+	var body := _make_mesh_part(_capsule(radius * 1.06, t_height + 0.18 * s), Vector3.ZERO, body_col, 0.035 * s)
+	torso.add_child(body)
+
+	# Head: a big rounded blob sitting on the shoulders.
+	var head_r := 0.36 * s
+	var head_y := t_height * 0.5 + head_r * 0.72
+	var head := _make_mesh_part(_sphere(head_r), Vector3(0, head_y, 0), skin, 0.035 * s)
 	torso.add_child(head)
 
-	# Weapon / accent nub on the front, so facing is readable.
-	var weapon := MeshInstance3D.new()
-	var weapon_mesh := BoxMesh.new()
-	weapon_mesh.size = Vector3(0.12, 0.12, 0.9) * s
-	weapon.mesh = weapon_mesh
-	weapon.position = Vector3(radius * 0.9, t_height * 0.1, radius + 0.3 * s)
-	weapon.material_override = _make_material(accent)
-	torso.add_child(weapon)
+	# Eyes: two little dark dots facing the enemy.
+	var eye_r := 0.06 * s
+	var eye_z := face * head_r * 0.82
+	torso.add_child(_make_mesh_part(_sphere(eye_r), Vector3(-0.13 * s, head_y + 0.05 * s, eye_z), Color(0.08, 0.08, 0.1), 0.0))
+	torso.add_child(_make_mesh_part(_sphere(eye_r), Vector3(0.13 * s, head_y + 0.05 * s, eye_z), Color(0.08, 0.08, 0.1), 0.0))
 
-	# Dangling arms as separate jointed rigid bodies.
-	_build_arm(-1.0, radius, t_height, s, mass, accent)
-	_build_arm(1.0, radius, t_height, s, mass, accent)
+	# Stubby legs + feet (visual only, fixed to the torso).
+	for side in [-1.0, 1.0]:
+		var leg_x: float = side * 0.22 * s
+		var leg := _make_mesh_part(_capsule(0.16 * s, 0.42 * s), Vector3(leg_x, -t_height * 0.5 - 0.02 * s, 0), body_col, 0.03 * s)
+		torso.add_child(leg)
+		var foot := _make_mesh_part(_squashed_sphere(0.17 * s), Vector3(leg_x, -t_height * 0.5 - 0.22 * s, face * 0.06 * s), skin.darkened(0.25), 0.025 * s)
+		torso.add_child(foot)
+
+	# Floppy jointed arms.
+	_build_arm(-1.0, radius, t_height, s, mass, skin)
+	_build_arm(1.0, radius, t_height, s, mass, skin)
+
+func _make_mesh_part(mesh: Mesh, pos: Vector3, color: Color, outline: float) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.position = pos
+	mi.material_override = Style.toon(color, outline)
+	return mi
+
+func _capsule(r: float, h: float) -> CapsuleMesh:
+	var m := CapsuleMesh.new()
+	m.radius = r
+	m.height = max(h, 2.0 * r + 0.01)
+	return m
+
+func _sphere(r: float) -> SphereMesh:
+	var m := SphereMesh.new()
+	m.radius = r
+	m.height = r * 2.0
+	return m
+
+func _squashed_sphere(r: float) -> SphereMesh:
+	var m := SphereMesh.new()
+	m.radius = r
+	m.height = r * 1.2
+	return m
 
 ## Instantiates a GLB/scene model, scales it to the desired height, grounds it
 ## on the torso capsule and tints it slightly toward the team colour. Returns
@@ -225,8 +258,8 @@ func _build_arm(side: float, radius: float, t_height: float, s: float, body_mass
 	arm.collision_mask = LAYER_WORLD  # arms only collide with the ground
 	add_child(arm)
 
-	var arm_len := 0.6 * s
-	var arm_r := 0.12 * s
+	var arm_len := 0.52 * s
+	var arm_r := 0.15 * s
 	var ashape := CollisionShape3D.new()
 	var acaps := CapsuleShape3D.new()
 	acaps.radius = arm_r
@@ -234,13 +267,9 @@ func _build_arm(side: float, radius: float, t_height: float, s: float, body_mass
 	ashape.shape = acaps
 	arm.add_child(ashape)
 
-	var amesh := MeshInstance3D.new()
-	var acaps_mesh := CapsuleMesh.new()
-	acaps_mesh.radius = arm_r
-	acaps_mesh.height = arm_len
-	amesh.mesh = acaps_mesh
-	amesh.material_override = _make_material(accent.lerp(_team_color, 0.5))
-	arm.add_child(amesh)
+	# Stubby team-coloured arm with a little skin-coloured hand at the end.
+	arm.add_child(_make_mesh_part(_capsule(arm_r, arm_len), Vector3.ZERO, _team_color, 0.03 * s))
+	arm.add_child(_make_mesh_part(_sphere(arm_r * 1.15), Vector3(0, -arm_len * 0.5, 0), accent, 0.025 * s))
 
 	# Shoulder anchor in world space.
 	var shoulder := torso.global_position + Vector3(side * (radius + arm_r + 0.02), t_height * 0.25, 0)
@@ -255,10 +284,7 @@ func _build_arm(side: float, radius: float, t_height: float, s: float, body_mass
 	joint.node_b = arm.get_path()
 
 func _make_material(col: Color) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = col
-	m.roughness = 0.7
-	return m
+	return Style.toon(col)
 
 func _build_health_bar() -> void:
 	_health_bar = Sprite3D.new()

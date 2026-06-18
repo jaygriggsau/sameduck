@@ -9,6 +9,11 @@ under fully autonomous AI.
 
 ## Features
 
+- **Borderlands-style art** — flat cel/toon shading with bold black ink
+  outlines (an inverted-hull `next_pass`), warm key light and a stylized sky.
+- **Gang-Beasts-style units** — chunky, soft, blobby humanoids (rounded torso,
+  big head with eyes, stubby hands and feet) that flop around thanks to the
+  active-ragdoll physics.
 - **3D active-ragdoll units** — each fighter is a self-balancing `RigidBody3D`
   (a PD controller keeps it upright, so it wobbles, staggers from knockbacks,
   and collapses into a limp ragdoll on death) with joint-connected dangling

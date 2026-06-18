@@ -64,34 +64,33 @@ func _build_environment() -> void:
 	var e := Environment.new()
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color("#3a6ea5")
-	sky_mat.sky_horizon_color = Color("#bcd2e8")
-	sky_mat.ground_horizon_color = Color("#bcd2e8")
-	sky_mat.ground_bottom_color = Color("#6b7a5a")
+	sky_mat.sky_top_color = Color("#2f7fd6")
+	sky_mat.sky_horizon_color = Color("#cfe4f2")
+	sky_mat.ground_horizon_color = Color("#cfe4f2")
+	sky_mat.ground_bottom_color = Color("#7a6a48")
+	sky_mat.sun_angle_max = 30.0
 	sky.sky_material = sky_mat
 	e.background_mode = Environment.BG_SKY
 	e.sky = sky
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	e.ambient_light_energy = 0.6
+	e.ambient_light_energy = 0.55  # lower fill = crisper toon bands / more contrast
 	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.environment = e
 	add_child(env)
 
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-55, -40, 0)
-	sun.light_energy = 1.1
+	sun.rotation_degrees = Vector3(-52, -40, 0)
+	sun.light_energy = 1.25
+	sun.light_color = Color("#fff2d6")  # warm key light
 	sun.shadow_enabled = true
 	add_child(sun)
 
-	# Ground (visual)
+	# Ground (visual) — toon-shaded.
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(FIELD_X, FIELD_Z)
 	ground.mesh = plane
-	var gmat := StandardMaterial3D.new()
-	gmat.albedo_color = Color("#5d7a4a")
-	gmat.roughness = 1.0
-	ground.material_override = gmat
+	ground.material_override = Style.flat(Color("#6f9152"))
 	add_child(ground)
 
 	# Centre line + zone tints

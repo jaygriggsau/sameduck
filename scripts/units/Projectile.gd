@@ -38,11 +38,7 @@ func _ready() -> void:
 		var bm := BoxMesh.new()
 		bm.size = Vector3(0.08, 0.08, 0.7)
 		mesh.mesh = bm
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = _accent
-	mat.emission_enabled = true
-	mat.emission = _accent * 0.6
-	mesh.material_override = mat
+	mesh.material_override = Style.toon(_accent, 0.02)
 	add_child(mesh)
 
 func _physics_process(delta: float) -> void:
