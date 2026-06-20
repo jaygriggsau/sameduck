@@ -18,10 +18,13 @@ under fully autonomous AI.
   big head with eyes, stubby hands and feet) that flop around thanks to the
   active-ragdoll physics, including a gentle **idle wobble** while they stand
   around (each unit sways on its own random rhythm). Each unit type has a
-  **distinct silhouette**: the
-  peasant's straw hat, the spearman's spear, the brawler's headband, the
-  archer's hood + bow, the knight's steel helmet + sword, the bomber's bomb,
-  and the giant's horns + club.
+  **distinct silhouette**: the peasant's straw hat, the spearman's spear, the
+  brawler's headband, the archer's hood + bow, the knight's steel helmet +
+  sword, the bomber's bomb, and the giant's horns + club.
+- **Funny ragdoll physics** — hard hits launch units off their feet with a
+  comedic spin; knocked-down units go fully limp, flail on the ground, then
+  scramble back upright and rejoin the fight. Big units (giants!) send whole
+  clusters flying.
 - **3D active-ragdoll units** — each fighter is a self-balancing `RigidBody3D`
   (a PD controller keeps it upright, so it wobbles, staggers from knockbacks,
   and collapses into a limp ragdoll on death) with joint-connected dangling

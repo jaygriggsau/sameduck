@@ -19,9 +19,11 @@ const LAYER_BODY := 2
 const LAYER_LIMB := 4
 
 # Balancing PD controller gains (tuned for the default ~3kg torso; scaled by mass).
-const BALANCE_STIFFNESS := 40.0
-const BALANCE_DAMPING := 9.0
-const MOVE_FORCE := 9.0
+const BALANCE_STIFFNESS := 38.0
+const BALANCE_DAMPING := 6.5
+const MOVE_FORCE := 10.0
+# Tip past this angle (radians) and the unit gives up and ragdolls for a moment.
+const KNOCKDOWN_TILT := 1.0  # ~57 degrees
 
 var team: int = GameManager.Team.A
 var stats: Dictionary = {}
@@ -52,6 +54,11 @@ var _idle_freq: float = 1.3
 var _t: float = 0.0
 var _moving: bool = false
 
+# Ragdoll knockdown/recovery: while _down_timer runs the unit lies limp and
+# flails; then it pops up and _getup_timer forces it back onto its feet.
+var _down_timer: float = 0.0
+var _getup_timer: float = 0.0
+
 # Configure must be called before the node enters the tree (before add_child).
 func configure(unit_id: String, unit_team: int, world_pos: Vector3, arena: Node) -> void:
 	stats = UnitDatabase.get_unit(unit_id)
@@ -66,8 +73,8 @@ func _ready() -> void:
 	add_to_group("units")
 	add_to_group(_team_group())
 	_phys_mat = PhysicsMaterial.new()
-	_phys_mat.friction = 0.9
-	_phys_mat.bounce = 0.0
+	_phys_mat.friction = 0.85
+	_phys_mat.bounce = 0.12  # a bit of comedic bonk
 	_build_body()
 	_build_health_bar()
 	# Randomise the idle sway so a crowd of units never bobs in unison.
@@ -93,8 +100,8 @@ func _build_body() -> void:
 	torso.name = "Torso"
 	torso.mass = mass
 	torso.can_sleep = false
-	torso.linear_damp = 1.4
-	torso.angular_damp = 1.0
+	torso.linear_damp = 1.0
+	torso.angular_damp = 0.6
 	torso.physics_material_override = _phys_mat
 	torso.collision_layer = LAYER_BODY
 	torso.collision_mask = LAYER_WORLD | LAYER_BODY
@@ -408,6 +415,29 @@ func _physics_process(delta: float) -> void:
 				queue_free()
 		return
 
+	# Knocked down: lie limp and flail, then pop up into a recovery window.
+	if _down_timer > 0.0:
+		_down_timer -= delta
+		_moving = false
+		if _down_timer <= 0.0:
+			_getup_timer = 1.1
+			torso.apply_central_impulse(Vector3.UP * torso.mass * 2.6)  # struggle to feet
+		else:
+			_apply_flail()
+		return
+
+	# Recovery window: force balance back upright, ignore the tip-over check.
+	if _getup_timer > 0.0:
+		_getup_timer -= delta
+		_moving = false
+		_apply_balance(delta)
+		return
+
+	# Tipped too far over? Give up and ragdoll for a beat (very TABS).
+	if torso.global_transform.basis.y.angle_to(Vector3.UP) > KNOCKDOWN_TILT:
+		_knock_down(randf_range(0.7, 1.4))
+		return
+
 	# Decide whether the unit is walking this frame (only during battle), then
 	# keep the torso upright — with an idle sway when it's just standing around.
 	if simulating:
@@ -424,6 +454,18 @@ func _physics_process(delta: float) -> void:
 		_moving = false
 
 	_apply_balance(delta)
+
+## Knock the unit off its feet for `dur` seconds of free ragdolling.
+func _knock_down(dur: float) -> void:
+	_down_timer = maxf(_down_timer, dur)
+	_moving = false
+
+## Occasional twitch while down, so the ragdoll looks like it's struggling.
+func _apply_flail() -> void:
+	if randf() < 0.12:
+		var twitch := Vector3(randf_range(-1, 1), randf_range(-0.3, 1), randf_range(-1, 1))
+		torso.apply_central_impulse(twitch * torso.mass * 1.2)
+		torso.apply_torque(Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * torso.mass * 3.0)
 
 func _apply_balance(_delta: float) -> void:
 	# Target straight up while walking; gently sway in a little circle when idle.
@@ -488,8 +530,8 @@ func _do_attack(to_target: Vector3) -> void:
 	if stats.get("is_ranged", false):
 		_fire_projectile(dir)
 	else:
-		# Melee: lunge slightly and strike.
-		torso.apply_central_impulse(dir * torso.mass * 0.6)
+		# Melee: big comedic lunge, then strike.
+		torso.apply_central_impulse((dir + Vector3.UP * 0.25) * torso.mass * 1.4)
 		if _is_target_valid():
 			_target.take_damage(stats.get("attack_damage", 10.0), dir, stats.get("knockback", 4.0))
 
@@ -510,7 +552,13 @@ func take_damage(amount: float, hit_dir: Vector3, knockback: float) -> void:
 		var kb := hit_dir.normalized() if hit_dir.length() > 0.001 else Vector3.ZERO
 		# Heavier units resist knockback (divide by mass factor).
 		var resist: float = clamp(3.0 / torso.mass, 0.25, 1.2)
-		torso.apply_central_impulse((kb + Vector3.UP * 0.4) * knockback * resist)
+		# Beefier, more launchy knockback + a random spin for comedy.
+		var impulse := (kb + Vector3.UP * 0.6) * knockback * resist * 1.8
+		torso.apply_central_impulse(impulse)
+		torso.apply_torque(Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * knockback * resist * 2.5)
+		# Hard hits bowl the unit clean over (then it scrambles back up).
+		if health > 0.0 and (impulse.length() / torso.mass > 4.0 or randf() < 0.1):
+			_knock_down(randf_range(0.7, 1.5))
 	if health <= 0.0:
 		_die(hit_dir)
 
@@ -521,13 +569,13 @@ func _die(hit_dir: Vector3) -> void:
 	remove_from_group("units")
 	if _health_bar != null:
 		_health_bar.visible = false
-	# Go limp: collapse into a ragdoll with a final shove.
+	# Go limp: collapse into a ragdoll with a dramatic final shove + spin.
 	if torso != null:
-		torso.angular_damp = 0.2
+		torso.angular_damp = 0.15
 		var shove := hit_dir.normalized() if hit_dir.length() > 0.001 else Vector3(randf() - 0.5, 0, randf() - 0.5)
-		torso.apply_central_impulse((shove + Vector3.UP * 0.5) * 4.0)
-		torso.apply_torque(Vector3(randf_range(-6, 6), randf_range(-6, 6), randf_range(-6, 6)) * torso.mass)
-	_despawn_timer = 4.0
+		torso.apply_central_impulse((shove + Vector3.UP * 0.8) * (5.0 + torso.mass) * 1.5)
+		torso.apply_torque(Vector3(randf_range(-10, 10), randf_range(-10, 10), randf_range(-10, 10)) * torso.mass)
+	_despawn_timer = 4.5
 	died.emit(self)
 
 func _update_health_bar() -> void:
